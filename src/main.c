@@ -17,6 +17,7 @@
 #include "version.h"
 #include "wall.h"
 #include "icons.h"
+#include "chat.h"
 
 #define WM_TRAY    (WM_APP + 1)
 #define WM_UPDATE  (WM_APP + 2)   // from update.c: wParam UPD_*, lParam manual
@@ -39,7 +40,7 @@ enum {
     IDM_CLI, IDM_WALL_DRAW, IDM_WALL_CLEAR, IDM_WARDROBE,
     IDM_PLAY_GREET, IDM_PLAY_CHASE, IDM_PLAY_LINE, IDM_PLAY_RIDE, IDM_PLAY_DAZE,   // same order as PLAY_*
     IDM_FLIP, IDM_UPDATE_CHECK, IDM_UPDATE_INSTALL, IDM_FEAT_UPDATE, IDM_FOCUS, IDM_SLIDE,
-    IDM_FEAT_ICONS, IDM_ICONS_RESTORE, IDM_WHIP,
+    IDM_FEAT_ICONS, IDM_ICONS_RESTORE, IDM_WHIP, IDM_CHAT,
 };
 
 // Claude Code hook events, sent by `clawd.exe --cc <name>`.
@@ -540,6 +541,7 @@ static void destroy_pet(int idx)
 {
     PetWin *pw = g_pets[idx];
     if (g_press_pw == pw) g_press_pw = NULL;
+    chat_forget(&pw->tb);
     if (pw->pet.job.kind != JOB_NONE) job_end(pw);
     tb_destroy(&pw->tb);
     layers_destroy(pw);
@@ -1553,6 +1555,7 @@ static void show_menu(PetWin *pw)
     AppendMenuW(m, MF_STRING | CHECK(paused), IDM_PAUSE, L"待在原地");
     AppendMenuW(m, MF_STRING, IDM_SLEEP, L"去睡觉");
     AppendMenuW(m, MF_STRING, IDM_WARDROBE, L"换装…");
+    AppendMenuW(m, MF_STRING, IDM_CHAT, L"对话…");
     // Tricks any one of them can do, then the games that take two.
     HMENU play = CreatePopupMenu();
     UINT alone = active_pets() < 2 ? MF_GRAYED : 0;
@@ -1697,6 +1700,11 @@ static void show_menu(PetWin *pw)
     case IDM_WARDROBE: {   // from the tray: the first one
         const Pet *p = pw ? &pw->pet : &g_pets[0]->pet;
         wardrobe_open(pet_head(p), p->area, g_dpi, p->id, p->wear, dressed);
+        break;
+    }
+    case IDM_CHAT: {
+        PetWin *talk = pw ? pw : g_pets[0];
+        chat_open(g_host, g_inst, &talk->pet, &talk->tb);
         break;
     }
     case IDM_POMO_START: {
@@ -2078,3 +2086,4 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, PWSTR cmdline, int show)
     }
     return 0;
 }
+
